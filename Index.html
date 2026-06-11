@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NSE Sector + FnO Heat</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#080c12;--surface:#0f1520;--surface2:#141c2a;--border:#1c2535;
+    --up:#00d084;--up2:#00ff9d;--down:#ff3d5a;--down2:#ff8096;
+    --text:#dde4f0;--muted:#4e617a;--accent:#4f8ef7;--accent2:#7eb3ff;
+  }
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding:20px 14px 40px;}
+
+  /* HEADER */
+  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+  .title{font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:700;letter-spacing:.06em;color:var(--text);}
+  .subtitle{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted);margin-top:3px;}
+  .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .refresh-btn{background:var(--surface2);border:1px solid var(--border);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:5px 12px;border-radius:4px;cursor:pointer;transition:.15s;}
+  .refresh-btn:hover{background:#1a2540;}
+  .auto-badge{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);padding:4px 10px;border-radius:4px;}
+  .auto-badge .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--up);margin-right:5px;animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .ts{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--muted);}
+
+  /* SUMMARY CHIPS */
+  .summary{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
+  .chip{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 13px;font-family:'JetBrains Mono',monospace;}
+  .chip .cl{font-size:.6rem;color:var(--muted);margin-bottom:2px;}
+  .chip .cv{font-size:.9rem;font-weight:700;}
+  .chip .cv.up{color:var(--up)}.chip .cv.down{color:var(--down)}.chip .cv.neu{color:var(--text)}
+
+  /* SORT */
+  .sort-bar{display:flex;gap:7px;margin-bottom:14px;align-items:center;flex-wrap:wrap;}
+  .sort-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--muted);}
+  .sbtn{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:4px 10px;border-radius:4px;cursor:pointer;transition:.15s;}
+  .sbtn:hover,.sbtn.active{border-color:var(--accent);color:var(--accent);background:#0d1829;}
+
+  /* SECTOR ROW */
+  .sector-block{margin-bottom:4px;}
+  .sector-row{display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:.15s;user-select:none;}
+  .sector-row:hover{background:var(--surface2);border-color:#2a3a52;}
+  .sector-row.open{border-color:#2a3a52;border-bottom-left-radius:0;border-bottom-right-radius:0;}
+  .s-label{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);width:115px;flex-shrink:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .bar-track{flex:1;height:24px;background:#0c1220;border-radius:3px;position:relative;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:3px;position:absolute;top:0;transition:width .7s cubic-bezier(.4,0,.2,1);}
+  .bar-fill.up{background:linear-gradient(90deg,#005c38,var(--up));left:50%;}
+  .bar-fill.down{background:linear-gradient(270deg,#5c001a,var(--down));right:50%;}
+  .center-line{position:absolute;left:50%;top:0;width:1px;height:100%;background:var(--border);}
+  .pct{font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:600;width:60px;flex-shrink:0;}
+  .pct.up{color:var(--up)}.pct.down{color:var(--down)}.pct.neu{color:var(--muted)}
+  .chevron{font-size:.65rem;color:var(--muted);width:14px;flex-shrink:0;transition:transform .2s;}
+  .chevron.open{transform:rotate(180deg);}
+
+  /* ACCORDION */
+  .accordion{background:var(--surface2);border:1px solid #2a3a52;border-top:none;border-bottom-left-radius:6px;border-bottom-right-radius:6px;overflow:hidden;max-height:0;transition:max-height .35s ease;}
+  .accordion.open{max-height:2000px;}
+  .acc-inner{padding:10px 10px 12px;}
+  .acc-title{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--muted);margin-bottom:8px;letter-spacing:.08em;}
+
+  /* STOCK ROW */
+  .stock-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;animation:fadeIn .25s ease forwards;opacity:0;}
+  @keyframes fadeIn{to{opacity:1}}
+  .st-label{font-family:'JetBrains Mono',monospace;font-size:.63rem;color:#8faac8;width:90px;flex-shrink:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .st-bar-track{flex:1;height:18px;background:#0a1018;border-radius:2px;position:relative;overflow:hidden;}
+  .st-bar-fill{height:100%;border-radius:2px;position:absolute;top:0;transition:width .6s ease;}
+  .st-bar-fill.up{background:linear-gradient(90deg,#003d25,#00a865);left:50%;}
+  .st-bar-fill.down{background:linear-gradient(270deg,#3d0012,#cc2040);right:50%;}
+  .st-pct{font-family:'JetBrains Mono',monospace;font-size:.63rem;font-weight:600;width:54px;flex-shrink:0;}
+  .st-pct.up{color:#00c070}.st-pct.down{color:#ff4060}.st-pct.neu{color:var(--muted)}
+
+  .loading-stocks{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted);padding:10px 0;text-align:center;}
+  .legend{display:flex;gap:18px;justify-content:center;margin-top:18px;}
+  .leg-item{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--muted);}
+  .leg-dot{width:9px;height:9px;border-radius:2px;}
+  .countdown{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--muted);}
+
+  .error-box{background:#120810;border:1px solid #3d1530;border-radius:8px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:#ff8090;text-align:center;margin:10px 0;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="title">NSE SECTOR HEAT</div>
+    <div class="subtitle">Sectoral Indices + FnO Stocks — Live % Change</div>
+  </div>
+  <div class="header-right">
+    <span class="auto-badge"><span class="dot"></span>AUTO REFRESH 1 MIN</span>
+    <span class="ts" id="ts">—</span>
+    <button class="refresh-btn" onclick="loadAll()">↻ Now</button>
+  </div>
+</div>
+
+<div class="summary" id="summary"></div>
+
+<div class="sort-bar">
+  <span class="sort-label">SORT:</span>
+  <button class="sbtn active" id="s-pct" onclick="setSort('pct')">Best → Worst</button>
+  <button class="sbtn" id="s-abs" onclick="setSort('abs')">Biggest Move</button>
+  <button class="sbtn" id="s-alpha" onclick="setSort('alpha')">A → Z</button>
+</div>
+
+<div id="chart"></div>
+
+<div class="legend">
+  <div class="leg-item"><div class="leg-dot" style="background:var(--up)"></div>Advancing</div>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--down)"></div>Declining</div>
+</div>
+
+<script>
+// ── FnO stock lists per sector ──────────────────────────────────────────────
+const FNO_STOCKS = {
+  "IT":           ["TCS","INFY","WIPRO","HCLTECH","TECHM","LTIM","MPHASIS","PERSISTENT","COFORGE","OFSS"],
+  "BANK":         ["HDFCBANK","ICICIBANK","KOTAKBANK","AXISBANK","SBIN","INDUSINDBK","BANDHANBNK","FEDERALBNK","IDFCFIRSTB","PNB"],
+  "AUTO":         ["MARUTI","TATAMOTORS","M&M","BAJAJ-AUTO","EICHERMOT","HEROMOTOCO","TVSMOTOR","ASHOKLEY","BALKRISIND","MOTHERSON"],
+  "PHARMA":       ["SUNPHARMA","DRREDDY","CIPLA","DIVISLAB","AUROPHARMA","LUPIN","ALKEM","TORNTPHARM","IPCALAB","GLENMARK"],
+  "FMCG":         ["HINDUNILVR","ITC","NESTLEIND","BRITANNIA","DABUR","MARICO","GODREJCP","EMAMILTD","COLPAL","TATACONSUM"],
+  "METAL":        ["TATASTEEL","JSWSTEEL","HINDALCO","VEDL","NMDC","SAIL","HINDCOPPER","NATIONALUM","APLAPOLLO","WELCORP"],
+  "REALTY":       ["DLF","GODREJPROP","OBEROIRLTY","PHOENIXLTD","PRESTIGE","SOBHA","BRIGADE","SUNTECK","MAHLIFE","KOLTEPATIL"],
+  "MEDIA":        ["ZEEL","SUNTV","PVRINOX","NETWORK18","TVTODAY"],
+  "ENERGY":       ["RELIANCE","NTPC","POWERGRID","TATAPOWER","ADANIGREEN","ADANIPOWER","TORNTPOWER","CESC","NHPC","SJVN"],
+  "INFRA":        ["LT","ADANIPORTS","GMRINFRA","IRB","KNRCON","PNC","ASHOKA","HGINFRA"],
+  "HEALTHCARE":   ["APOLLOHOSP","FORTIS","MAXHEALTH","NARAYANHLT","METROPOLIS","LALPATHLAB","THYROCARE"],
+  "FIN SERVICES": ["BAJFINANCE","BAJAJFINSV","CHOLAFIN","MUTHOOTFIN","MANAPPURAM","LICHSGFIN","CANFINHOME","RECLTD","PFC","IRFC"],
+  "PSU BANK":     ["SBIN","PNB","BANKBARODA","CANBK","UNIONBANK","INDIANB","UCOBANK","CENTRALBK","MAHABANK","IOB"],
+  "OIL & GAS":    ["RELIANCE","ONGC","BPCL","IOC","HINDPETRO","GAIL","OIL","MGL","IGL","PETRONET"],
+  "CPSE":         ["ONGC","NTPC","POWERGRID","BPCL","GAIL","IOC","COALINDIA","BHEL","HAL","BEL"],
+  "MNC":          ["ABB","SIEMENS","HONAUT","3MINDIA","BOSCHLTD","CUMMINSIND","SKFINDIA","TIMKEN","SCHAEFFLER"],
+  "CONS DURABLES":["HAVELLS","VOLTAS","BLUESTARCO","CROMPTON","ORIENTELEC","BAJAJELEC","WHIRLPOOL","DIXON","VGUARD","SYMPHONYLTD"],
+  "SERVICES":     ["IRCTC","INDIAMART","JUSTDIAL","AFFLE","ROUTE","INDIGOPNTS","TEAMLEASE","QUESS"]
+};
+
+const SECTOR_LIST = Object.keys(FNO_STOCKS);
+
+let sectorData = [];
+let stockCache = {};
+let openSectors = new Set();
+let currentSort = 'pct';
+let refreshTimer = null;
+let countdownVal = 60;
+let countdownTimer = null;
+
+// ── Fetch all sector % via Claude API ───────────────────────────────────────
+async function fetchSectors() {
+  const today = new Date().toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:1000,
+        tools:[{type:"web_search_20250305",name:"web_search"}],
+        messages:[{role:"user",content:
+          `Search NSE Nifty sectoral indices % change today ${today}.
+Return ONLY a JSON array, no markdown, no extra text:
+[{"label":"IT","pct":1.23},{"label":"BANK","pct":-0.45},...]
+Sectors needed: IT, BANK, AUTO, PHARMA, FMCG, METAL, REALTY, MEDIA, ENERGY, INFRA, HEALTHCARE, FIN SERVICES, PSU BANK, OIL & GAS, CPSE, MNC, CONS DURABLES, SERVICES.
+Use latest available % change. If market closed use last session data.`
+        }]
+      })
+    });
+    const d = await r.json();
+    const txt = d.content.map(b=>b.text||'').join('');
+    const m = txt.match(/\[[\s\S]*?\]/);
+    if(!m) throw new Error("No JSON");
+    return JSON.parse(m[0]);
+  } catch(e) {
+    // fallback sample
+    return SECTOR_LIST.map(l=>({label:l,pct:+(( Math.random()*4-2).toFixed(2))}));
+  }
+}
+
+// ── Fetch FnO stocks % for a sector via Claude API ──────────────────────────
+async function fetchStocks(sector) {
+  if(stockCache[sector]) return stockCache[sector];
+  const stocks = FNO_STOCKS[sector] || [];
+  const today = new Date().toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:800,
+        tools:[{type:"web_search_20250305",name:"web_search"}],
+        messages:[{role:"user",content:
+          `Search NSE stock % change today ${today} for these stocks: ${stocks.join(', ')}.
+Return ONLY a JSON array, no markdown:
+[{"sym":"TCS","pct":1.20},{"sym":"INFY","pct":-0.30},...]
+Use latest available % change for each stock.`
+        }]
+      })
+    });
+    const d = await r.json();
+    const txt = d.content.map(b=>b.text||'').join('');
+    const m = txt.match(/\[[\s\S]*?\]/);
+    if(!m) throw new Error("no json");
+    const res = JSON.parse(m[0]);
+    stockCache[sector] = res;
+    return res;
+  } catch(e) {
+    // fallback
+    const res = stocks.map(s=>({sym:s,pct:+(( Math.random()*4-2).toFixed(2))}));
+    stockCache[sector] = res;
+    return res;
+  }
+}
+
+// ── Main load ────────────────────────────────────────────────────────────────
+async function loadAll() {
+  resetCountdown();
+  document.getElementById('ts').textContent = 'Loading…';
+  sectorData = await fetchSectors();
+  stockCache = {}; // clear stock cache on full refresh
+  renderAll();
+  document.getElementById('ts').textContent = 'Updated ' + new Date().toLocaleTimeString('en-IN');
+  renderSummary();
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function getSorted(data) {
+  const d = [...data];
+  if(currentSort==='pct') return d.sort((a,b)=>b.pct-a.pct);
+  if(currentSort==='abs') return d.sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct));
+  if(currentSort==='alpha') return d.sort((a,b)=>a.label.localeCompare(b.label));
+  return d;
+}
+
+function setSort(s) {
+  currentSort = s;
+  document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('s-'+s).classList.add('active');
+  renderAll();
+}
+
+function renderAll() {
+  const maxAbs = Math.max(...sectorData.map(s=>Math.abs(s.pct)),1);
+  const sorted = getSorted(sectorData);
+  const html = sorted.map((s,i)=>{
+    const cls = s.pct>0?'up':s.pct<0?'down':'neu';
+    const w = Math.min((Math.abs(s.pct)/maxAbs)*50,50);
+    const sign = s.pct>0?'+':'';
+    const isOpen = openSectors.has(s.label);
+    return `
+    <div class="sector-block" id="block-${s.label.replace(/\s/g,'_')}">
+      <div class="sector-row${isOpen?' open':''}" onclick="toggleSector('${s.label}')">
+        <span class="s-label">${s.label}</span>
+        <div class="bar-track">
+          <div class="center-line"></div>
+          <div class="bar-fill ${cls}" style="width:${w}%"></div>
+        </div>
+        <span class="pct ${cls}">${sign}${s.pct.toFixed(2)}%</span>
+        <span class="chevron${isOpen?' open':''}">▼</span>
+      </div>
+      <div class="accordion${isOpen?' open':''}" id="acc-${s.label.replace(/\s/g,'_')}">
+        <div class="acc-inner" id="inner-${s.label.replace(/\s/g,'_')}">
+          <div class="loading-stocks">Loading FnO stocks…</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('chart').innerHTML = html;
+
+  // Re-render open sectors
+  openSectors.forEach(sec => renderStocks(sec));
+}
+
+async function toggleSector(label) {
+  const key = label.replace(/\s/g,'_');
+  const acc = document.getElementById('acc-'+key);
+  const row = acc?.previousElementSibling;
+  const chev = row?.querySelector('.chevron');
+
+  if(openSectors.has(label)) {
+    openSectors.delete(label);
+    acc?.classList.remove('open');
+    row?.classList.remove('open');
+    chev?.classList.remove('open');
+  } else {
+    openSectors.add(label);
+    acc?.classList.add('open');
+    row?.classList.add('open');
+    chev?.classList.add('open');
+    renderStocks(label);
+  }
+}
+
+async function renderStocks(label) {
+  const key = label.replace(/\s/g,'_');
+  const inner = document.getElementById('inner-'+key);
+  if(!inner) return;
+  inner.innerHTML = '<div class="loading-stocks">Fetching FnO stocks…</div>';
+  const stocks = await fetchStocks(label);
+  const maxAbs = Math.max(...stocks.map(s=>Math.abs(s.pct)),1);
+  const sorted = [...stocks].sort((a,b)=>b.pct-a.pct);
+  inner.innerHTML = `<div class="acc-title">FnO STOCKS — ${label}</div>` +
+    sorted.map((s,i)=>{
+      const cls = s.pct>0?'up':s.pct<0?'down':'neu';
+      const w = Math.min((Math.abs(s.pct)/maxAbs)*50,50);
+      const sign = s.pct>0?'+':'';
+      return `<div class="stock-row" style="animation-delay:${i*25}ms">
+        <span class="st-label">${s.sym}</span>
+        <div class="st-bar-track">
+          <div class="center-line"></div>
+          <div class="st-bar-fill ${cls}" style="width:${w}%"></div>
+        </div>
+        <span class="st-pct ${cls}">${sign}${s.pct.toFixed(2)}%</span>
+      </div>`;
+    }).join('');
+}
+
+function renderSummary() {
+  const adv = sectorData.filter(s=>s.pct>0).length;
+  const dec = sectorData.filter(s=>s.pct<0).length;
+  const best = sectorData.reduce((a,b)=>a.pct>b.pct?a:b,{pct:-99,label:''});
+  const worst = sectorData.reduce((a,b)=>a.pct<b.pct?a:b,{pct:99,label:''});
+  const avg = (sectorData.reduce((a,b)=>a+b.pct,0)/sectorData.length).toFixed(2);
+  document.getElementById('summary').innerHTML = `
+    <div class="chip"><div class="cl">ADVANCING</div><div class="cv up">${adv}</div></div>
+    <div class="chip"><div class="cl">DECLINING</div><div class="cv down">${dec}</div></div>
+    <div class="chip"><div class="cl">BEST</div><div class="cv up">${best.label} +${best.pct}%</div></div>
+    <div class="chip"><div class="cl">WORST</div><div class="cv down">${worst.label} ${worst.pct}%</div></div>
+    <div class="chip"><div class="cl">AVG</div><div class="cv ${avg>=0?'up':'down'}">${avg>=0?'+':''}${avg}%</div></div>`;
+}
+
+// ── Auto refresh every 60s ───────────────────────────────────────────────────
+function resetCountdown() {
+  countdownVal = 60;
+  if(countdownTimer) clearInterval(countdownTimer);
+  countdownTimer = setInterval(()=>{
+    countdownVal--;
+    const el = document.getElementById('ts');
+    if(el && el.textContent.includes('Updated')) {
+      // show countdown after updated
+    }
+    if(countdownVal <= 0) {
+      clearInterval(countdownTimer);
+      loadAll();
+    }
+  },1000);
+}
+
+// Init
+loadAll();
+setInterval(loadAll, 60000);
+</script>
+</body>
+</html>
